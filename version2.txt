@@ -1,1 +1,1 @@
-this is my version 3 of my software which i am making.
+this is the text file which i make for understanding git.
