@@ -1,28 +1,55 @@
 this is the text file which i make for understanding git.
 
-import { ChatClient, ChatPeerState, ChatUserStatus } from "./PhotonChat/ChatClient";
+const { ccclass, property } = cc._decorator;
 
-const client = new ChatClient();
-client.connect("your-app-id", "your-app-version");
+@ccclass
+export default class MultiplayerChat extends cc.Component {
+  @property(cc.EditBox)
+  messageInput: cc.EditBox = null;
 
-client.addEventListener("OnChatStateChange", (state: ChatPeerState) => {
-    console.log(`Chat state changed to: ${ChatPeerState[state]}`);
-});
+  @property(cc.Node)
+  messageContainer: cc.Node = null;
 
-client.addEventListener("OnUserStatusUpdate", (status: ChatUserStatus) => {
-    console.log(`User status changed to: ${ChatUserStatus[status]}`);
-});
+  private client: Photon.Chat.ChatClient;
+  private channelName: string = "your-chat-channel-name";
 
-function sendChatMessage(message: string) {
-    client.publishMessage("general", message);
+  onLoad() {
+    const ChatAppId = "your-chat-app-id";
+    const ChatAppVersion = "your-chat-app-version";
+    this.client = new Photon.Chat.ChatClient();
+    this.client.connect(ChatAppId, ChatAppVersion);
+
+    this.client.addChatListener({
+      onGetMessages: (channelName, senders, messages) => {
+        if (channelName === this.channelName) {
+          for (let i = 0; i < messages.length; i++) {
+            this.addMessage(senders[i], messages[i]);
+          }
+        }
+      }
+    });
+
+    this.client.subscribe(this.channelName);
+  }
+
+  onDestroy() {
+    this.client.disconnect();
+  }
+
+  private addMessage(sender: string, message: string) {
+    const label = new cc.Node("Label");
+    const messageLabel = label.addComponent(cc.Label);
+    messageLabel.string = `[${sender}] ${message}`;
+    this.messageContainer.addChild(label);
+  }
+
+  public sendMessage() {
+    const message = this.messageInput.string;
+    if (message) {
+      this.client.publishMessage(this.channelName, message);
+      this.addMessage("Me", message);
+      this.messageInput.string = "";
+    }
+  }
 }
-
-client.addEventListener("OnChatMessage", (channel: string, sender: string, message: string) => {
-    console.log(`${sender} said: ${message}`);
-
-    const labelNode = cc.find("Canvas/Label");
-    labelNode.getComponent(cc.Label).string += `${sender}: ${message}\n`;
-});
-
-sendChatMessage("Hello, world!");
 
