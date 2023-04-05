@@ -1,1 +1,86 @@
 this is the text file which i make for understanding git.
+
+
+import Photon from 'photon-sdk';
+
+const ChatClient = Photon.Chat.ChatClient;
+const ErrorCode = Photon.Chat.ErrorCode;
+const ChatEventCode = Photon.Chat.ChatEventCode;
+
+const {ccclass, property} = cc._decorator;
+
+@ccclass
+export default class MyChatScript extends cc.Component {
+
+    private client: any;
+    private chatChannel: any;
+    private messages: any[] = [];
+
+    @property(cc.EditBox)
+    messageInput: cc.EditBox = null;
+
+    @property(cc.Label)
+    messageLabel: cc.Label = null;
+
+    start() {
+        console.log('Script started');
+        this.initChatClient();
+    }
+
+    initChatClient() {
+        this.client = new ChatClient();
+
+        // Register event listeners for chat-related events
+        this.client.addCallbackTarget(this);
+        this.client.onChatStateChange = this.onChatStateChange.bind(this);
+        this.client.onConnected = this.onConnected.bind(this);
+        this.client.onDisconnected = this.onDisconnected.bind(this);
+        this.client.onGetMessages = this.onGetMessages.bind(this);
+
+        // Connect to the Photon Cloud
+        this.client.connectToRegion('us');
+
+        // Join a chat channel
+        this.client.subscribe('my_channel');
+    }
+
+    sendChatMessage() {
+        const message = this.messageInput.string;
+        if (message) {
+            this.client.publishMessage('my_channel', message);
+            this.messageInput.string = '';
+        }
+    }
+
+    onChatStateChange(state) {
+        console.log('Chat state changed:', state);
+    }
+
+    onConnected() {
+        console.log('Connected to Photon Cloud');
+    }
+
+    onDisconnected() {
+        console.log('Disconnected from Photon Cloud');
+    }
+
+    onGetMessages(channelName, messages) {
+        console.log('Received chat messages:', messages);
+
+        // Add new messages to the messages array
+        this.messages = this.messages.concat(messages);
+
+        // Update the message label to show the latest messages
+        let messageText = '';
+        for (let i = 0; i < this.messages.length; i++) {
+            messageText += this.messages[i].sender + ': ' + this.messages[i].content + '\n';
+        }
+        this.messageLabel.string = messageText;
+    }
+
+    onDestroy() {
+        // Disconnect from the Photon Cloud and clean up resources
+        this.client.disconnect();
+        this.client.removeCallbackTarget(this);
+    }
+}
